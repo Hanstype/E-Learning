@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from .fields import OrderField
+from django.template.loader import render_to_string
 
 class Subject(models.Model):
     title = models.CharField(max_length=200)
@@ -25,6 +26,8 @@ class Course(models.Model):
     slug = models.SlugField(max_length=200, unique=True)
     overview = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
+    students = models.ManyToManyField(User, related_name='courses_joined',
+                                      blank=True)
      
     class Meta:
         ordering = ['-created']
@@ -58,7 +61,7 @@ class Content(models.Model):
                                          'video',
                                          'image',
                                          'file')})
-    object_id = models.PositiveBigIntegerField()
+    object_id = models.PositiveIntegerField()
     item = GenericForeignKey('content_type', 'object_id') 
     order = OrderField(blank=True, for_fields=['module'])
     
@@ -72,21 +75,27 @@ class ItemBase(models.Model):
     title = models.CharField(max_length=250)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-
+    
     class Meta:
         abstract = True
 
     def __str__(self):
         return self.title
     
+    def render(self):
+        return render_to_string(
+            f'courses/content/{self._meta.model_name}.html',
+            {'item':self}
+        )
+    
 class Text(ItemBase):
     content = models.TextField()
 
 class File(ItemBase):
-    content = models.FileField(upload_to='files')
+    file = models.FileField(upload_to='files')
 
 class Image(ItemBase):
-    content = models.ImageField(upload_to='images')
+    file = models.ImageField(upload_to='images')
 
 class Video(ItemBase):
-    content = models.URLField()
+    url = models.URLField()
